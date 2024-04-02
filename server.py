@@ -1,8 +1,9 @@
 import socket
 import threading
 import sys
+import db
 
-users = [["u1", "p1"], ["u2", "p2"], ["u3", "p3"]]
+# users = [["u1", "p1"], ["u2", "p2"], ["u3", "p3"]]
 
 
 class MultiServer(threading.Thread):
@@ -29,23 +30,24 @@ class MultiServer(threading.Thread):
 
     def login(self, credentials):
         username, password = credentials.split(",")
-        for user in users:
-            if user[0] == username and user[1] == password:
-                self.sock.send(b"Login successful. You can now send messages.")
-                self.username = username
-                print(
-                    f"User {username} Successfully Logged In. You can now send messages."
-                )
-                return True
-        self.sock.send(b"Login failed")
-        return False
+        print(username, password)
+        try:
+            db.auth(username, password)
+        except Exception as e:
+            self.sock.send(b"Login failed")
+            return False
+        self.sock.send(b"Login successful. You can now send messages.")
+        self.username = username
+        print(f"User {username} Successfully Logged In. You can now send messages.")
+        return True
 
     def register(self, credentials):
         username, password = credentials.split(",")
-        for user in users:
-            if user[0] == username:
-                self.sock.send(b"Username already exists")
-                return False
+        try:
+            db.add_user(username, password)
+        except Exception as e:
+            self.sock.send(b"Username already exists")
+            return False        
         users.append([username, password])
         self.sock.send(b"Registration successful. You can now send messages.")
         print(f"User {username} Successfully Registered. You can now send messages.")
