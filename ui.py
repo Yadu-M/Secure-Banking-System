@@ -4,6 +4,9 @@ from tkinter import messagebox
 import actions
 import json
 import socket
+import hmac
+import hashlib
+import base64
 
 
 # ------------------------------------------------------Defining Socket Stuff----------------------------------------#
@@ -16,6 +19,29 @@ print(sock.recv(1024).decode())
 
 user = ""
 balanceGlobal = ""
+key1 = None
+key2 = None
+
+# ------------------------------------------------------Symettric key Stuff----------------------------------------#
+
+# Fernet module is imported from the  
+# cryptography package 
+from cryptography.fernet import Fernet 
+  
+# key is generated 
+key = Fernet.generate_key() 
+print (key)  
+# value of key is assigned to a variable 
+f = Fernet(key) 
+keystr = key.decode()
+data_to_send = {
+        "action": actions.KEY,
+        "KEY":keystr
+    }
+
+encoded_data = json.dumps(data_to_send).encode()
+sock.send(encoded_data)
+
 
 # ------------------------------------------------------UI Stuff------------------------------------------------------#
 
@@ -59,8 +85,10 @@ def post_login():
         "action": actions.BALANCE
     }
 
+    f1 = Fernet(key1)   
     encoded_data = json.dumps(data_to_send).encode()
-    sock.send(encoded_data)
+    token = f1.encrypt(encoded_data) 
+    sock.send(token)
 
     ogbalance = sock.recv(1024).decode()
 
@@ -101,9 +129,12 @@ def post_login():
     deposit_entry.config(validate='key', validatecommand=(deposit_entry.register(lambda action, input_str: validate_input(action, input_str, 'deposit')), '%d', '%P'))
 
     # Confirm button
+
+
+
     def confirm():
 
-        global user
+        global user, key1, key2
 
         withdraw_amount = withdraw_entry.get()
         deposit_amount = deposit_entry.get()
@@ -114,10 +145,26 @@ def post_login():
             data_to_send = {
                 "action": actions.DEPOSIT,
                 "amount": deposit_amount,
-            }
-
+            } 
             encoded_data = json.dumps(data_to_send).encode()
-            sock.send(encoded_data)
+            #print ("the encoded data")
+
+            #HMAC
+            hmac_digest = hmac.new(key2, encoded_data, hashlib.sha256).digest()
+            base64_hmac = base64.b64encode(hmac_digest).decode('utf-8')
+            
+            data_to_send2 = {
+                "action": actions.DEPOSIT,
+                "amount": deposit_amount,
+                "sig": base64_hmac
+            }
+            #Encrypting with derived key 1
+
+            f1 = Fernet(key1) 
+            encoded_data = json.dumps(data_to_send2).encode()
+            token = f1.encrypt(encoded_data) 
+            sock.send(token)
+
             response = sock.recv(1024).decode()
             print("new balance: ", response)
             current_balance_label.configure(text=f"Current Balance: {response}")
@@ -129,9 +176,22 @@ def post_login():
                 "action": actions.WITHDRAW,
                 "amount": withdraw_amount,
             }
-
             encoded_data = json.dumps(data_to_send).encode()
-            sock.send(encoded_data)
+            #HMAC
+            hmac_digest = hmac.new(key2, encoded_data, hashlib.sha256).digest()
+            base64_hmac = base64.b64encode(hmac_digest).decode('utf-8')
+            
+            data_to_send2 = {
+                "action": actions.WITHDRAW,
+                "amount": withdraw_amount,
+                "sig": base64_hmac
+            }
+            #Encrypting with derived key 1
+
+            f1 = Fernet(key1) 
+            encoded_data = json.dumps(data_to_send2).encode()
+            token = f1.encrypt(encoded_data) 
+            sock.send(token)
             response = sock.recv(1024).decode()
             print("new balance: ", response)
             current_balance_label.configure(text=f"Current Balance: {response}")
@@ -144,6 +204,7 @@ def post_login():
 
 # Login button
 def login():
+    global key1, key2
     username = username_entry.get()
     password = password_entry.get()
     
@@ -159,8 +220,13 @@ def login():
     }
     
     encoded_data = json.dumps(data_to_send).encode()
-    sock.send(encoded_data)
-    response = sock.recv(1024).decode()
+    token = f.encrypt(encoded_data) 
+    #print ("login token")
+    #print (token)
+    sock.send(token)
+    #response = sock.recv(1024).decode()
+    response = f.decrypt(sock.recv(1024))
+    response = response.decode()
     # response_obj = json.loads(response)
     
     print(response)
@@ -173,6 +239,15 @@ def login():
         messagebox.showerror("Invalid Credentials", "Wrong credentials entered")
     else:
         user = username
+        data = json.loads(response)
+        key1 = data["key1"]
+        key2 = data["key2"]
+        key1 = key1.encode()
+        key2 = key2.encode()
+        print ("key 1 is")
+        print (key1)
+        print ("key 2 is")
+        print (key2)
         post_login()
 
 
@@ -184,7 +259,7 @@ def register():
     username = username_entry.get()
     password = password_entry.get()
 
-    global user
+    global key1, key2, user
 
     # Sending user data to server
     data = {
@@ -194,8 +269,13 @@ def register():
     }
 
     encoded_data = json.dumps(data).encode()
-    sock.send(encoded_data)
-    response = sock.recv(1024).decode()
+    token = f.encrypt(encoded_data) 
+    sock.send(token)
+    response = f.decrypt(sock.recv(1024))
+    response = response.decode()
+    # response_obj = json.loads(response)
+    
+    print(response)
 
     if (response == "Username already exists"):
         messagebox.showerror("Error", "Username already exists.")
@@ -212,6 +292,15 @@ def register():
         else:
             deposit = response_obj["balance"]
             user = username
+            data = json.loads(response)
+            key1 = data["key1"]
+            key2 = data["key2"]
+            key1 = key1.encode()
+            key2 = key2.encode()
+            print ("key 1 is")
+            print (key1)
+            print ("key 2 is")
+            print (key2)
             post_login()
 
 register_button = ttk.Button(login_frame, text="Register", command=register)

@@ -4,7 +4,13 @@ import sys
 import db
 import json
 import actions
-
+from cryptography.fernet import Fernet 
+import os
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import hashlib
+import base64
+import hmac
 PORT_NUM = 15000
 
 
@@ -17,13 +23,22 @@ class MultiServer(threading.Thread):
         self.username = None  # Initialize the username attribute
         self.auth = False
         self.balance = None
+        self.key = None
+        self.keyValue = None
+        self.key1 = None
+        self.key2 = None
 
     def run(self):
+        counter = 0
         while True:
+            print (counter)
             data : dict
-            incoming_data = self.sock.recv(1024).decode()    
+            if counter >= 1:
+                incoming_data = self.key.decrypt(self.sock.recv(1024))
+                incoming_data = incoming_data.decode()
+            if counter == 0:    
+                incoming_data = self.sock.recv(1024).decode()  
             data = json.loads(incoming_data)
-
             print(data)      
             action = data["action"]
 
@@ -31,23 +46,81 @@ class MultiServer(threading.Thread):
                 self.login(data)
             elif action == actions.REGISTER:
                 self.register(data)
+            elif action == actions.KEY:
+                print (data["KEY"])
+                key = data["KEY"].encode()
+                self.key = Fernet(key)
+                self.keyValue = key
+                counter +=1 
+            
+
 
             if self.username:  # Proceed to message_loop only if a username is set
                 self.message_loop()
+
+
+    def keyDerive(self):
+        salt = os.urandom(16)
+        # derive
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=80000,
+        )
+        key1 = kdf.derive(self.keyValue)
+        #print ("key1")
+        #print (key1)
+        sha256_hash1 = hashlib.sha256(key1).digest()
+        base64_encoded1 = base64.b64encode(sha256_hash1)
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=80001,
+        )
+        key2 = kdf.derive(self.keyValue)
+        #print ("key2")
+        #print (key2)
+        sha256_hash2 = hashlib.sha256(key2).digest()
+        base64_encoded2 = base64.b64encode(sha256_hash2)
+
+        # verify
+        #print (base64_encoded1)
+        #print (base64_encoded2)
+        #keystr = key.decode()
+        #print (keystr)
+    
+
+        return (base64_encoded1, base64_encoded2)
 
     def login(self, user_data):
         username = user_data["username"]
         password = user_data["password"]
         balance = None
+        key1, key2 = self.keyDerive()
+        self.key1 = Fernet(key1)
+        self.key2 = key2
+        print ("key1 is")
+        print (key1)
+        print ("key2 is")
+        print (key2)
+        key1 = key1.decode()
+        key2 = key2.decode()
+        #print (key1)
+        #print (key2)
         try:
             balance = db.auth(username, password)
+
         except:
             self.sock.send(b"Error")
             return False
 
-        obj_to_send = {"status": True, "balance": f"{balance}"}
-
-        self.sock.send(json.dumps(obj_to_send).encode("utf-8"))
+        obj_to_send = {"status": True, "balance": f"{balance}", "key1": key1, "key2": key2}
+        encoded_data = json.dumps(obj_to_send).encode()
+        token = self.key.encrypt(encoded_data) 
+        self.sock.send(token)
+        #self.sock.send(json.dumps(obj_to_send).encode("utf-8"))
         self.username = username
         self.auth = True
         self.balance = balance
@@ -58,14 +131,26 @@ class MultiServer(threading.Thread):
         username = user_data["username"]
         password = user_data["password"]
         balance = 0
+        key1, key2 = self.keyDerive()
+        self.key1 = Fernet(key1)
+        self.key2 = key2
+        print ("key1 is")
+        print (key1)
+        print ("key2 is")
+        print (key2)
+        key1 = key1.decode()
+        key2 = key2.decode()
         try:
             db.add_user(username, password)
         except Exception as e:
             self.sock.send(b"Username already exists")
-            return False   
-        obj_to_send = {"status": True, "balance": f"{balance}"}
-
-        self.sock.send(json.dumps(obj_to_send).encode("utf-8"))
+            return False
+        print ("in register key1")
+        print (key1)
+        obj_to_send = {"status": True, "balance": f"{balance}", "key1": key1, "key2": key2}
+        encoded_data = json.dumps(obj_to_send).encode()
+        token = self.key.encrypt(encoded_data) 
+        self.sock.send(token)
         print(f"User {username} Successfully Registered. You can now send messages.")
         self.auth = True
         self.username = username
@@ -75,7 +160,9 @@ class MultiServer(threading.Thread):
     def message_loop(self):
         print("In Messaghe LOOP")
         while True:
-            incoming_data = self.sock.recv(1024).decode()
+            
+            incoming_data = self.key1.decrypt(self.sock.recv(1024))
+            incoming_data = incoming_data.decode()
             data = json.loads(incoming_data)
             action = data["action"]
 
@@ -83,16 +170,49 @@ class MultiServer(threading.Thread):
                 break
 
             print(f"Message from {self.username}: {data}")
-
             if action == actions.DEPOSIT:
+                #HMAC START
+                message = {
+                    "action": action,
+                    "amount": data["amount"]
+                }
+                encoded_data = json.dumps(message).encode()
+                received_base64_hmac = data["sig"]
+
+                calculated_hmac_digest = hmac.new(self.key2, encoded_data, hashlib.sha256).digest()
+                calculated_base64_hmac = base64.b64encode(calculated_hmac_digest).decode('utf-8')
+
+                if calculated_base64_hmac == received_base64_hmac:
+                    print("Signatures match. The message is authentic.")
+                else:
+                    print("Signatures do not match. The message may have been tampered with.")
+                #HMAC END
                 data["amount"] = int(data["amount"])
                 print("data b4 action", data)
 
                 newBalance = db.deposit(self.username, data["amount"])
                 print(newBalance)
                 self.sock.send(str(newBalance).encode())
-                # print("test1")
             elif action == actions.WITHDRAW:
+                #HMAC START
+                message = {
+                    "action": action,
+                    "amount": data["amount"]
+                }
+                encoded_data = json.dumps(message).encode()
+                received_base64_hmac = data["sig"]
+
+                calculated_hmac_digest = hmac.new(self.key2, encoded_data, hashlib.sha256).digest()
+                calculated_base64_hmac = base64.b64encode(calculated_hmac_digest).decode('utf-8')
+
+                if calculated_base64_hmac == received_base64_hmac:
+                    print("Signatures match. The message is authentic.")
+                else:
+                    print("Signatures do not match. The message may have been tampered with.")
+                #HMAC END
+
+
+
                 data["amount"] = int(data["amount"])
                 action = data["action"]
                 print("data b4 action", data)
