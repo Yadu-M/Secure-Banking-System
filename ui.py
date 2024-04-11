@@ -6,7 +6,7 @@ import json
 import socket
 
 
-#------------------------------------------------------Defining Socket Stuff----------------------------------------#
+# ------------------------------------------------------Defining Socket Stuff----------------------------------------#
 HOST_NAME = "localhost"
 PORT_NUM = 15000
 
@@ -15,9 +15,9 @@ sock.connect((HOST_NAME, PORT_NUM))
 print(sock.recv(1024).decode())
 
 user = ""
-deposit = ""
+balanceGlobal = ""
 
-#------------------------------------------------------UI Stuff------------------------------------------------------#
+# ------------------------------------------------------UI Stuff------------------------------------------------------#
 
 root = tk.Tk()
 root.title("ATM Machine")
@@ -50,13 +50,22 @@ password_entry.grid(row=1, column=1, padx=10, pady=10)
 # Post login/register page
 def post_login():
     login_frame.forget()        
-        
+
     # Create a frame for the transaction page
     transaction_frame = ttk.Frame(root)
     transaction_frame.pack(pady=20)
 
+    data_to_send = {
+        "action": actions.BALANCE
+    }
+
+    encoded_data = json.dumps(data_to_send).encode()
+    sock.send(encoded_data)
+
+    ogbalance = sock.recv(1024).decode()
+
     # Current Balance
-    current_balance_label = ttk.Label(transaction_frame, text="Current Balance: 0")
+    current_balance_label = ttk.Label(transaction_frame, text=f"Current Balance: {ogbalance}")
     current_balance_label.grid(row=0, column=0, columnspan=2, pady=10)
 
     # Withdraw
@@ -93,9 +102,41 @@ def post_login():
 
     # Confirm button
     def confirm():
+
+        global user
+
         withdraw_amount = withdraw_entry.get()
         deposit_amount = deposit_entry.get()
         # Add your transaction logic here
+        if deposit_amount:
+            print("User", user, int(deposit_amount))
+            # deposit(user, int(deposit_amount))
+            data_to_send = {
+                "action": actions.DEPOSIT,
+                "amount": deposit_amount,
+            }
+
+            encoded_data = json.dumps(data_to_send).encode()
+            sock.send(encoded_data)
+            response = sock.recv(1024).decode()
+            print("new balance: ", response)
+            current_balance_label.configure(text=f"Current Balance: {response}")
+        elif withdraw_amount:
+            # dsd
+            print("User", user, int(withdraw_amount))
+            # deposit(user, int(deposit_amount))
+            data_to_send = {
+                "action": actions.WITHDRAW,
+                "amount": withdraw_amount,
+            }
+
+            encoded_data = json.dumps(data_to_send).encode()
+            sock.send(encoded_data)
+            response = sock.recv(1024).decode()
+            print("new balance: ", response)
+            current_balance_label.configure(text=f"Current Balance: {response}")
+        else:
+            print("NON ACTION REQUESTED")
 
     confirm_button = ttk.Button(transaction_frame, text="Confirm", command=confirm)
     confirm_button.grid(row=3, column=0, columnspan=2, pady=10)
@@ -126,16 +167,14 @@ def login():
     # print(response_obj)
     # print(f'Register Status: {response}\n')    
 
-
     if not username or not password:
         messagebox.showerror("Error", "Please enter both username and password.")
-    # elif not response_obj.success:
-    #     messagebox.showerror("Invalid Credentials", "Wrong credentials entered")
+    elif response == "Error":
+        messagebox.showerror("Invalid Credentials", "Wrong credentials entered")
     else:
         user = username
         post_login()
-        
-        
+
 
 login_button = ttk.Button(login_frame, text="Login", command=login)
 login_button.grid(row=2, column=0, padx=10, pady=10)
@@ -144,36 +183,39 @@ login_button.grid(row=2, column=0, padx=10, pady=10)
 def register():
     username = username_entry.get()
     password = password_entry.get()
-    
+
     global user
-    
+
     # Sending user data to server
     data = {
         "action": actions.REGISTER,
         "username": username,
         "password": password
     }
-    
+
     encoded_data = json.dumps(data).encode()
     sock.send(encoded_data)
     response = sock.recv(1024).decode()
-    response_obj = json.loads(response)
-        
-    print(response_obj)    
-    print(f'Register Status: {response}\n')    
 
-    if not username or not password:
-        messagebox.showerror("Error", "Please enter both username and password.")
-    elif not response:
-        messagebox.showerror("Error", "Something went wrong while trying to register")
+    if (response == "Username already exists"):
+        messagebox.showerror("Error", "Username already exists.")
     else:
-        deposit = response_obj.deposit
-        user = username
-        post_login()
+        response_obj = json.loads(response)
+
+        print(response_obj)    
+        print(f'Register Status: {response}\n')    
+
+        if not username or not password:
+            messagebox.showerror("Error", "Please enter both username and password.")
+        elif not response:
+            messagebox.showerror("Error", "Something went wrong while trying to register")
+        else:
+            deposit = response_obj["balance"]
+            user = username
+            post_login()
 
 register_button = ttk.Button(login_frame, text="Register", command=register)
 register_button.grid(row=2, column=1, padx=10, pady=10)
-
 
 
 root.mainloop()
