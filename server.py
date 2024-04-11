@@ -56,7 +56,6 @@ class MultiServer(threading.Thread):
     def run(self):
         counter = 0
         while True:
-            print (counter)
             data : dict
             if counter >= 1:
                 incoming_data = self.key.decrypt(self.sock.recv(1024))
@@ -138,7 +137,9 @@ class MultiServer(threading.Thread):
             balance = db.auth(username, password)
 
         except:
-            self.sock.send(b"Error")
+            token = self.key.encrypt(b"Error") 
+            self.sock.send(token)
+            #self.sock.send(b"Error")
             return False
 
         obj_to_send = {"status": True, "balance": f"{balance}", "key1": key1, "key2": key2}
@@ -168,7 +169,9 @@ class MultiServer(threading.Thread):
         try:
             db.add_user(username, password)
         except Exception as e:
-            self.sock.send(b"Username already exists")
+            token = self.key.encrypt(b"Username already exists") 
+            self.sock.send(token)
+            #self.sock.send(b"Username already exists")
             return False
         print ("in register key1")
         print (key1)
