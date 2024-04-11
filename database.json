@@ -1,1 +1,19 @@
-{"_default": {"1": {"username": "u1", "pass": "p1"}, "2": {"username": "u2", "pass": "p2"}, "3": {"username": "u3", "pass": "p3"}}}
+{
+    "_default": {
+        "1": {
+            "balance": 5,
+            "pass": "p1",
+            "username": "u1"
+        },
+        "2": {
+            "balance": 50,
+            "pass": "p2",
+            "username": "u2"
+        },
+        "3": {
+            "balance": 0,
+            "pass": "p3",
+            "username": "u3"
+        }
+    }
+}
