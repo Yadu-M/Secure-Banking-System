@@ -1,4 +1,5 @@
 from tinydb import TinyDB, Query
+from datetime import datetime
 
 DB_PATH = 'database.json'
 db = TinyDB(DB_PATH)
@@ -35,18 +36,6 @@ def auth(username, password):
     except Exception as e:
         raise Exception(e)
 
-# def userinfo(username):
-#     try:
-#         User = Query()
-#         account = db.search(User.username == username)
-#         if (len(account) == 0):
-#             raise Exception("No account found lil bro")
-
-#         print(str(account))
-
-#     except Exception as e:
-#         raise Exception(e)
-
 
 def deposit(username: str, amount: int):
     try:
@@ -59,7 +48,6 @@ def deposit(username: str, amount: int):
         newBalance = account["balance"] + amount
         db.update({"balance": newBalance}, User.username == username)
 
-        # Optionally fetch the updated account to confirm
         updated_account = db.search(User.username == username)[0]
         print("Updated account:", updated_account)
         return newBalance
@@ -79,13 +67,13 @@ def withdraw(username: str, amount: int):
         newBalance = account["balance"] - amount
         db.update({"balance": newBalance}, User.username == username)
 
-        # Optionally fetch the updated account to confirm
         updated_account = db.search(User.username == username)[0]
         print("Updated account:", updated_account)
         return newBalance
 
     except Exception as e:
         raise Exception(e)
+
 
 def getBalance(username: str):
     try:
@@ -94,8 +82,26 @@ def getBalance(username: str):
         if len(account) == 0:
             raise Exception("No account found lil bro")
 
-        # Optionally fetch the updated account to confirm
         return account["balance"]
+
+    except Exception as e:
+        raise Exception(e)
+
+
+def getIDAndTime(username: str):
+    try:
+        User = Query()
+        search = db.search(User.username == username)
+
+        if len(search) == 0:
+            raise Exception("No account found lil bro")
+
+        account = search[0]
+
+        now = datetime.now()
+        time = now.strftime("%d-%m-%Y %H:%M:%S")
+
+        return account.doc_id, time 
 
     except Exception as e:
         raise Exception(e)
