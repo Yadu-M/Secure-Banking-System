@@ -4,6 +4,14 @@ import sys
 import db
 import json
 import actions
+from threading import Lock
+from tabulate import tabulate
+
+
+# Initialize a Lock and a shared list
+auditLogLock = Lock()
+auditLogTracker = []
+auditLogHeaders = ["Customer ID", "Customer Username", "Action Taken", "Date/Time Of Action"]
 
 PORT_NUM = 15000
 
@@ -17,6 +25,22 @@ class MultiServer(threading.Thread):
         self.username = None  # Initialize the username attribute
         self.auth = False
         self.balance = None
+
+    def addLog(self, username: str, action: str):
+        global shared_list, shared_list_lock
+        with auditLogLock:
+            identity, time = db.getIDAndTime(username)
+            row = [identity, username, action, time]
+            auditLogTracker.append(row)
+            table = tabulate(
+                auditLogTracker,
+                auditLogHeaders,
+                tablefmt="plain",
+                colalign=("left", "left", "left", "left")
+            )
+
+            with open("auditlog.txt", "w") as f:
+                f.write(table)
 
     def run(self):
         while True:
@@ -74,6 +98,7 @@ class MultiServer(threading.Thread):
 
     def message_loop(self):
         print("In Messaghe LOOP")
+        self.addLog(self.username, f"The user logged in.")
         while True:
             incoming_data = self.sock.recv(1024).decode()
             data = json.loads(incoming_data)
@@ -86,20 +111,29 @@ class MultiServer(threading.Thread):
 
             if action == actions.DEPOSIT:
                 data["amount"] = int(data["amount"])
+                amount = data["amount"]
                 print("data b4 action", data)
 
                 newBalance = db.deposit(self.username, data["amount"])
                 print(newBalance)
                 self.sock.send(str(newBalance).encode())
+                self.addLog(
+                    self.username,
+                    f"The user deposited ${amount}'s. New balance is ${newBalance}.",
+                )
                 # print("test1")
             elif action == actions.WITHDRAW:
                 data["amount"] = int(data["amount"])
-                action = data["action"]
+                amount = data["amount"]
                 print("data b4 action", data)
 
                 newBalance = db.withdraw(self.username, data["amount"])
                 print(newBalance)
                 self.sock.send(str(newBalance).encode())
+                self.addLog(
+                    self.username,
+                    f"The user withdrew ${amount}'s. New balance is ${newBalance}.",
+                )
             elif action == actions.BALANCE:
                 checkbalance = db.getBalance(self.username)
                 print(checkbalance)
@@ -115,6 +149,10 @@ def main():
     server_sock.bind(("localhost", PORT_NUM))
     server_sock.listen(5)
     print(f"Server listening on port {PORT_NUM}")
+
+    # f = open("auditlog.txt", "w")
+    # f.write("Customer ID \t|\tCustomer Username\t|\tAction Taken\t|\tTime Of Action")
+    # f.close()
 
     while True:
         client_sock, client_address = server_sock.accept()
