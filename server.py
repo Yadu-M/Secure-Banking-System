@@ -38,14 +38,15 @@ class MultiServer(threading.Thread):
         username = user_data["username"]
         password = user_data["password"]
         try:
-            db.auth(username, password)
+            deposit = db.auth(username, password)
         except:
             self.sock.send(b"Error")
             return False
-        self.sock.send(b"Login successful. You can now send messages.")
+        
+        self.sock.send(bytes({"status" : True, "deposit": f'{deposit}'}))
         self.username = username
         self.auth = True
-        print(f"User {username} Successfully Logged In. You can now send messages.")
+        # print(f"User {username} Successfully Logged In. You can now send messages.")
         return True
 
     def register(self, user_data):
@@ -55,8 +56,10 @@ class MultiServer(threading.Thread):
             db.add_user(username, password)
         except Exception as e:
             self.sock.send(b"Username already exists")
-            return False        
-        self.sock.send(b"Registration successful. You can now send messages.")
+            return False   
+        obj_to_send = {"status" : "True", "deposit": "0"}
+        
+        self.sock.send(bytearray(obj_to_send))
         print(f"User {username} Successfully Registered. You can now send messages.")
         self.auth = True
         self.username = username
