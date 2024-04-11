@@ -52,21 +52,6 @@ class MultiServer(threading.Thread):
             with open("auditlog.txt", "w") as f:
                 f.write(table)
 
-    def addLog(self, username: str, action: str):
-        global shared_list, shared_list_lock
-        with auditLogLock:
-            identity, time = db.getIDAndTime(username)
-            row = [identity, username, action, time]
-            auditLogTracker.append(row)
-            table = tabulate(
-                auditLogTracker,
-                auditLogHeaders,
-                tablefmt="plain",
-                colalign=("left", "left", "left", "left")
-            )
-
-            with open("auditlog.txt", "w") as f:
-                f.write(table)
 
     def run(self):
         counter = 0

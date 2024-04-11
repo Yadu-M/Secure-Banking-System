@@ -1,16 +1,19 @@
-  Customer ID  Customer Username    Action Taken                                    Date/Time Of Action
-            1  u1                   The user logged in.                             11-04-2024 04:41:46
-            1  u1                   The user deposited $5's. New balance is $10.    11-04-2024 04:42:06
-            1  u1                   The user withdrew $35's. New balance is $-25.   11-04-2024 04:42:29
-            1  u1                   The user deposited $100's. New balance is $75.  11-04-2024 04:42:42
-            2  u2                   The user logged in.                             11-04-2024 04:43:05
-            1  u1                   The user withdrew $25's. New balance is $50.    11-04-2024 04:43:13
-            1  u1                   The user deposited $5's. New balance is $55.    11-04-2024 04:43:40
-            2  u2                   The user deposited $10's. New balance is $60.   11-04-2024 04:43:42
-            1  u1                   The user deposited $5's. New balance is $60.    11-04-2024 04:43:43
-            2  u2                   The user deposited $10's. New balance is $70.   11-04-2024 04:43:44
-            1  u1                   The user deposited $5's. New balance is $65.    11-04-2024 04:43:52
-            2  u2                   The user deposited $10's. New balance is $80.   11-04-2024 04:43:53
-            2  u2                   The user withdrew $20's. New balance is $60.    11-04-2024 04:44:20
-            1  u1                   The user logged in.                             11-04-2024 04:46:39
-            1  u1                   The user withdrew $55's. New balance is $10.    11-04-2024 04:46:52
+Customer ID    Customer Username    Action Taken                                  Date/Time Of Action
+2              u2                   The user logged in.                           11-04-2024 06:00:06
+2              u2                   The user deposited $5's. New balance is $65.  11-04-2024 06:00:07
+2              u2                   The user deposited $5's. New balance is $70.  11-04-2024 06:00:07
+2              u2                   The user withdrew $5's. New balance is $65.   11-04-2024 06:00:10
+2              u2                   The user withdrew $5's. New balance is $60.   11-04-2024 06:00:10
+2              u2                   The user withdrew $5's. New balance is $55.   11-04-2024 06:00:10
+2              u2                   The user withdrew $5's. New balance is $50.   11-04-2024 06:00:11
+3              u3                   The user logged in.                           11-04-2024 06:00:36
+3              u3                   The user deposited $5's. New balance is $5.   11-04-2024 06:00:38
+3              u3                   The user deposited $5's. New balance is $10.  11-04-2024 06:00:38
+3              u3                   The user deposited $5's. New balance is $15.  11-04-2024 06:00:38
+3              u3                   The user deposited $5's. New balance is $20.  11-04-2024 06:00:38
+3              u3                   The user deposited $5's. New balance is $25.  11-04-2024 06:00:38
+2              u2                   The user deposited $5's. New balance is $55.  11-04-2024 06:00:42
+2              u2                   The user deposited $5's. New balance is $60.  11-04-2024 06:00:42
+2              u2                   The user deposited $5's. New balance is $65.  11-04-2024 06:00:42
+2              u2                   The user deposited $5's. New balance is $70.  11-04-2024 06:00:42
+2              u2                   The user deposited $5's. New balance is $75.  11-04-2024 06:00:42
