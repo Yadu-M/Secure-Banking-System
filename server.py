@@ -2,8 +2,10 @@ import socket
 import threading
 import sys
 import db
+import json
+import actions
 
-# users = [["u1", "p1"], ["u2", "p2"], ["u3", "p3"]]
+PORT_NUM = 15000
 
 
 class MultiServer(threading.Thread):
@@ -13,44 +15,50 @@ class MultiServer(threading.Thread):
         self.addr = address
         self.sock.send(b"Connected to server")
         self.username = None  # Initialize the username attribute
+        self.auth = False
 
     def run(self):
         while True:
-            data = self.sock.recv(1024).decode()
-            if data.startswith("L"):
-                if self.login(data[2:]):
-                    break
-            elif data.startswith("R"):
-                if self.register(data[2:]):
-                    break
-            else:
-                break
+            data : dict
+            incoming_data = self.sock.recv(1024).decode()    
+            data = json.loads(incoming_data)
+            
+            print(data)      
+            action = data["action"]
+            
+            if action == actions.LOGIN:
+                self.login(data)
+            elif action == actions.REGISTER:
+                self.register(data)
+                
         if self.username:  # Proceed to message_loop only if a username is set
             self.message_loop()
 
-    def login(self, credentials):
-        username, password = credentials.split(",")
-        print(username, password)
+    def login(self, user_data):
+        username = user_data["username"]
+        password = user_data["password"]
         try:
             db.auth(username, password)
-        except Exception as e:
-            self.sock.send(b"Login failed")
+        except:
+            self.sock.send(b"Error")
             return False
         self.sock.send(b"Login successful. You can now send messages.")
         self.username = username
+        self.auth = True
         print(f"User {username} Successfully Logged In. You can now send messages.")
         return True
 
-    def register(self, credentials):
-        username, password = credentials.split(",")
+    def register(self, user_data):
+        username = user_data["username"]
+        password = user_data["password"]
         try:
             db.add_user(username, password)
         except Exception as e:
             self.sock.send(b"Username already exists")
             return False        
-        users.append([username, password])
         self.sock.send(b"Registration successful. You can now send messages.")
         print(f"User {username} Successfully Registered. You can now send messages.")
+        self.auth = True
         self.username = username
         return True
 
@@ -63,11 +71,11 @@ class MultiServer(threading.Thread):
             self.sock.send(f"Echo: {data}".encode())
 
 
-def main(port):
+def main():
     server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_sock.bind(("localhost", port))
+    server_sock.bind(("localhost", PORT_NUM))
     server_sock.listen(5)
-    print(f"Server listening on port {port}")
+    print(f"Server listening on port {PORT_NUM}")
 
     while True:
         client_sock, client_address = server_sock.accept()
@@ -75,9 +83,9 @@ def main(port):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python server.py <port number>")
-        sys.exit(1)
+    # if len(sys.argv) != 2:
+    #     print("Usage: python server.py <port number>")
+    #     sys.exit(1)
 
-    port_number = int(sys.argv[1])
-    main(port_number)
+    # port_number = int(sys.argv[1])
+    main()

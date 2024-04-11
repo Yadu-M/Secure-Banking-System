@@ -1,5 +1,12 @@
 import socket
 import sys
+import json
+import actions
+
+HOST_NAME = "localhost"
+PORT_NUM = 15000
+LOGIN = "LOGIN"
+REGISTER = "REGISTER"
 # from tkinter import *
 # import tkinter as tk
 
@@ -140,20 +147,29 @@ import sys
 # root.mainloop()
 
 
-def main(host, port):
+def main():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((host, port))
+    sock.connect((HOST_NAME, PORT_NUM))
     print(sock.recv(1024).decode())
 
     while True:
         action = input("Enter 'L' to log in or 'R' to register: ").strip().upper()
         if action in ["L", "R"]:
-            # username = user
-            # password = user_pass
+            if action == "L":
+                action = actions.LOGIN
+            else:
+                action = actions.REGISTER
+                
             username = input("Username: ")
             password = input("Password: ")
-            message = f"{action} {username},{password}"
-            sock.send(message.encode())
+            message = {
+                "action": action,
+                "username": username,
+                "password": password
+            }
+            encoded_message = json.dumps(message).encode()
+            # message = f"{action} {username},{password}"
+            sock.send(encoded_message)
             response = sock.recv(1024).decode()
             print(response)
             if "successful" in response:
@@ -175,10 +191,10 @@ def main(host, port):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python client.py <host name> <port number>")
-        sys.exit(1)
+    # if len(sys.argv) != 3:
+    #     print("Usage: python client.py <host name> <port number>")
+    #     sys.exit(1)
 
-    host_name = sys.argv[1]
-    port_number = int(sys.argv[2])
-    main(host_name, port_number)
+    # host_name = sys.argv[1]
+    # port_number = int(sys.argv[2])
+    main()
