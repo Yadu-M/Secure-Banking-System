@@ -1,6 +1,5 @@
 import socket
 import threading
-import sys
 import db
 import json
 import actions
@@ -186,7 +185,7 @@ class MultiServer(threading.Thread):
         return True
 
     def message_loop(self):
-        print("In Messaghe LOOP")
+        print("In Message LOOP")
         self.addLog(self.username, f"The user logged in.")
         while True:
             
