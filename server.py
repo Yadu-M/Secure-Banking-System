@@ -5,7 +5,7 @@ import json
 import actions
 from threading import Lock
 from tabulate import tabulate
-
+from datetime import datetime
 
 # Initialize a Lock and a shared list
 auditLogLock = Lock()
@@ -64,6 +64,19 @@ class MultiServer(threading.Thread):
             data = json.loads(incoming_data)
             print(data)      
             action = data["action"]
+            
+            recv_time = data["time"].split(' ')[1]
+            recv_minute = recv_time.split(':')[1]
+            
+            curr_min = datetime.now().strftime("%M")
+            
+            if (int(recv_minute) + 2) > int(curr_min):
+                print(f'Current min: {curr_min}, Recieved min: {recv_minute}')
+                print('Message nonce successfully verified (recv_min + 2 < curr_min)')
+            else:
+                print("Unidentified Nonce")
+                raise Exception("Error, Unidentified nonce")
+
 
             if action == actions.LOGIN:
                 self.login(data)
@@ -77,7 +90,7 @@ class MultiServer(threading.Thread):
                 counter +=1 
             
 
-
+        
             if self.username:  # Proceed to message_loop only if a username is set
                 self.message_loop()
 
@@ -188,11 +201,25 @@ class MultiServer(threading.Thread):
         print("In Message LOOP")
         self.addLog(self.username, f"The user logged in.")
         while True:
+            try:
+                
+                incoming_data = self.key1.decrypt(self.sock.recv(1024))
             
-            incoming_data = self.key1.decrypt(self.sock.recv(1024))
+            except Exception:
+                pass
             incoming_data = incoming_data.decode()
             data = json.loads(incoming_data)
             action = data["action"]
+            recv_time = data["time"].split(' ')[1]
+            recv_minute = recv_time.split(':')[1]
+            
+            curr_min = datetime.now().strftime("%M")
+            
+            if (int(recv_minute) + 2) > int(curr_min):
+                print('Message nonce successfully verified')
+            else:
+                print("Unidentified Nonce")
+                raise Exception("None not successful")
 
             if not data or data == "EXIT":
                 break
@@ -201,7 +228,7 @@ class MultiServer(threading.Thread):
             if action == actions.DEPOSIT:
                 #HMAC START
                 message = {
-                    "action": action,
+                    "action": action,                    
                     "amount": data["amount"]
                 }
                 encoded_data = json.dumps(message).encode()

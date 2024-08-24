@@ -7,7 +7,7 @@ import socket
 import hmac
 import hashlib
 import base64
-
+from datetime import datetime
 
 # ------------------------------------------------------Defining Socket Stuff----------------------------------------#
 HOST_NAME = "localhost"
@@ -34,9 +34,11 @@ print (key)
 # value of key is assigned to a variable 
 f = Fernet(key) 
 keystr = key.decode()
+time = str(datetime.now())
 data_to_send = {
         "action": actions.KEY,
-        "KEY":keystr
+        "KEY":keystr,
+        "time": time
     }
 
 encoded_data = json.dumps(data_to_send).encode()
@@ -80,9 +82,11 @@ def post_login():
     # Create a frame for the transaction page
     transaction_frame = ttk.Frame(root)
     transaction_frame.pack(pady=20)
+    time = str(datetime.now())
 
     data_to_send = {
-        "action": actions.BALANCE
+        "action": actions.BALANCE,
+        "time": time
     }
 
     f1 = Fernet(key1)   
@@ -142,9 +146,11 @@ def post_login():
         if deposit_amount:
             print("User", user, int(deposit_amount))
             # deposit(user, int(deposit_amount))
+            time = str(datetime.now())
             data_to_send = {
                 "action": actions.DEPOSIT,
                 "amount": deposit_amount,
+                "time": time
             } 
             encoded_data = json.dumps(data_to_send).encode()
             #print ("the encoded data")
@@ -152,10 +158,12 @@ def post_login():
             #HMAC
             hmac_digest = hmac.new(key2, encoded_data, hashlib.sha256).digest()
             base64_hmac = base64.b64encode(hmac_digest).decode('utf-8')
+            # time = date
             
             data_to_send2 = {
                 "action": actions.DEPOSIT,
                 "amount": deposit_amount,
+                "time": time,
                 "sig": base64_hmac
             }
             #Encrypting with derived key 1
@@ -172,9 +180,11 @@ def post_login():
             # dsd
             print("User", user, int(withdraw_amount))
             # deposit(user, int(deposit_amount))
+            time = str(datetime.now())
             data_to_send = {
                 "action": actions.WITHDRAW,
                 "amount": withdraw_amount,
+                "time": time
             }
             encoded_data = json.dumps(data_to_send).encode()
             #HMAC
@@ -184,7 +194,8 @@ def post_login():
             data_to_send2 = {
                 "action": actions.WITHDRAW,
                 "amount": withdraw_amount,
-                "sig": base64_hmac
+                "time": time,
+                "sig": base64_hmac,
             }
             #Encrypting with derived key 1
 
@@ -196,6 +207,7 @@ def post_login():
             print("new balance: ", response)
             current_balance_label.configure(text=f"Current Balance: {response}")
         else:
+            messagebox.showerror("Error", "Enter your amount before submission")
             print("NON ACTION REQUESTED")
 
     confirm_button = ttk.Button(transaction_frame, text="Confirm", command=confirm)
@@ -212,85 +224,36 @@ def login():
     
     global user
     
-    # Sending User Data to 
-    data_to_send = {
-        "action": actions.LOGIN,
-        "username": username,
-        "password": password
-    }
-    
-    encoded_data = json.dumps(data_to_send).encode()
-    token = f.encrypt(encoded_data) 
-    #print ("login token")
-    #print (token)
-    sock.send(token)
-    #response = sock.recv(1024).decode()
-    response = f.decrypt(sock.recv(1024))
-    response = response.decode()
-    # response_obj = json.loads(response)
-    
-    print(response)
-    # print(response_obj)
-    # print(f'Register Status: {response}\n')    
-
     if not username or not password:
         messagebox.showerror("Error", "Please enter both username and password.")
-    elif response == "Error":
-        messagebox.showerror("Invalid Credentials", "Wrong credentials entered")
-    else:
-        user = username
-        data = json.loads(response)
-        key1 = data["key1"]
-        key2 = data["key2"]
-        key1 = key1.encode()
-        key2 = key2.encode()
-        print ("key 1 is")
-        print (key1)
-        print ("key 2 is")
-        print (key2)
-        post_login()
-
-
-login_button = ttk.Button(login_frame, text="Login", command=login)
-login_button.grid(row=2, column=0, padx=10, pady=10)
-
-# Register button
-def register():
-    username = username_entry.get()
-    password = password_entry.get()
-
-    global key1, key2, user
-
-    # Sending user data to server
-    data = {
-        "action": actions.REGISTER,
-        "username": username,
-        "password": password
-    }
-
-    encoded_data = json.dumps(data).encode()
-    token = f.encrypt(encoded_data) 
-    sock.send(token)
-    response = f.decrypt(sock.recv(1024))
-    response = response.decode()
-    # response_obj = json.loads(response)
     
-    print(response)
-
-    if (response == "Username already exists"):
-        messagebox.showerror("Error", "Username already exists.")
     else:
-        response_obj = json.loads(response)
+        # Sending User Data to 
+        data_to_send = {
+            "action": actions.LOGIN,
+            "username": username,
+            "password": password,
+            "time": time
+        }
+        
+        encoded_data = json.dumps(data_to_send).encode()
+        token = f.encrypt(encoded_data) 
+        #print ("login token")
+        #print (token)
+        sock.send(token)
+        #response = sock.recv(1024).decode()
+        response = f.decrypt(sock.recv(1024))
+        response = response.decode()
+        # response_obj = json.loads(response)
+        
+        print(response)
+        # print(response_obj)
+        # print(f'Register Status: {response}\n')    
 
-        print(response_obj)    
-        print(f'Register Status: {response}\n')    
-
-        if not username or not password:
-            messagebox.showerror("Error", "Please enter both username and password.")
-        elif not response:
-            messagebox.showerror("Error", "Something went wrong while trying to register")
+    
+        if response == "Error":
+            messagebox.showerror("Invalid Credentials", "Wrong credentials entered")
         else:
-            deposit = response_obj["balance"]
             user = username
             data = json.loads(response)
             key1 = data["key1"]
@@ -302,6 +265,64 @@ def register():
             print ("key 2 is")
             print (key2)
             post_login()
+
+
+login_button = ttk.Button(login_frame, text="Login", command=login)
+login_button.grid(row=2, column=0, padx=10, pady=10)
+
+# Register button
+def register():
+    username = username_entry.get()
+    password = password_entry.get()
+
+    global key1, key2, user
+    
+    if username == "" or password == "":
+        messagebox.showerror("Error", "Enter your credentials before submission.")
+        
+    else:
+        # Sending user data to server
+        data = {
+            "action": actions.REGISTER,
+            "username": username,
+            "password": password,
+            "time": time
+        }
+
+        encoded_data = json.dumps(data).encode()
+        token = f.encrypt(encoded_data) 
+        sock.send(token)
+        response = f.decrypt(sock.recv(1024))
+        response = response.decode()
+        # response_obj = json.loads(response)
+        
+        print(response)
+
+        if (response == "Username already exists"):
+            messagebox.showerror("Error", "Username already exists.")
+        else:
+            response_obj = json.loads(response)
+
+            print(response_obj)    
+            print(f'Register Status: {response}\n')    
+
+            if not username or not password:
+                messagebox.showerror("Error", "Please enter both username and password.")
+            elif not response:
+                messagebox.showerror("Error", "Something went wrong while trying to register")
+            else:
+                deposit = response_obj["balance"]
+                user = username
+                data = json.loads(response)
+                key1 = data["key1"]
+                key2 = data["key2"]
+                key1 = key1.encode()
+                key2 = key2.encode()
+                print ("key 1 is")
+                print (key1)
+                print ("key 2 is")
+                print (key2)
+                post_login()
 
 register_button = ttk.Button(login_frame, text="Register", command=register)
 register_button.grid(row=2, column=1, padx=10, pady=10)
