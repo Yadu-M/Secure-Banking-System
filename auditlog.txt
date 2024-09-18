@@ -1,5 +1,0 @@
-Customer ID    Customer Username    Action Taken                                     Date/Time Of Action
-1              u1                   The user logged in.                              11-04-2024 14:42:31
-1              u1                   The user withdrew $23's. New balance is $20.     11-04-2024 14:42:37
-1              u1                   The user withdrew $233's. New balance is $-213.  11-04-2024 14:42:54
-9              random               The user logged in.                              11-04-2024 14:44:23
